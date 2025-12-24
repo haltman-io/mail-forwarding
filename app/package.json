@@ -1,0 +1,23 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "dev": "set APP_ENV=dev && node ./source/server.js",
+    "prod": "set APP_ENV=prod && node ./source/server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
+    "express-slow-down": "^3.0.1",
+    "mariadb": "^3.4.5",
+    "nodemailer": "^7.0.12"
+  }
+}
