@@ -2,7 +2,7 @@
 
 ⚠️ **Important prerequisite**
 
-This Node.js project **depends on the Mail Forwarding base-postfix-forwarder** to run properly.
+This Node.js project **depends on the base-postfix-forwarder** to run properly.
 
 Before installing or running this API, **you MUST read and deploy the base-postfix-forwarder first**, since this service **writes directly into the same database used by the base-postfix-forwarder** (Postfix + MariaDB stack).
 
@@ -224,13 +224,13 @@ Used when the user does not specify `?domain=`.
 ## Running the Application
 
 ```bash
-node index.js
+node ./source/server.js
 ```
 
 Or with process managers:
 
 ```bash
-pm2 start index.js --name mail-forwarding-api
+pm2 start ./source/server.js --name mail-forwarding-api --no-daemon
 ```
 
 ---
