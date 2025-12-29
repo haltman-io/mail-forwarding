@@ -237,22 +237,31 @@ pm2 start ./source/server.js --name mail-forwarding-api --no-daemon
 
 ## API Endpoints
 
-### 1. `POST /forward/subscribe`
+⚠️ **Important**
 
-Request creation of a new email alias.
+All endpoints **accept GET requests only**.
+All input data **must be provided via URL query parameters**.
+No request body (JSON / POST) is used anywhere in this API.
 
-#### Input (JSON)
+---
 
-```json
-{
-  "name": "github",
-  "to": "user@gmail.com",
-  "domain": "example.org"
-}
+### 1. `GET /forward/subscribe`
+
+Requests the creation of a new email alias.
+
+#### Input (Query Parameters)
+
+```http
+/forward/subscribe?name=github&to=user@gmail.com&domain=example.org
 ```
 
-* `domain` is optional
-* If omitted, `DEFAULT_ALIAS_DOMAIN` is used
+| Parameter | Required | Description                   |
+| --------- | -------- | ----------------------------- |
+| `name`    | yes      | Alias local-part (before `@`) |
+| `to`      | yes      | Destination email address     |
+| `domain`  | no       | Alias domain                  |
+
+* If `domain` is omitted, `DEFAULT_ALIAS_DOMAIN` is used.
 
 ---
 
@@ -271,7 +280,19 @@ Request creation of a new email alias.
 
 ### 2. `GET /forward/confirm?token=...`
 
-Confirms alias creation.
+Confirms alias creation using the token received by email.
+
+#### Input (Query Parameters)
+
+```http
+/forward/confirm?token=AbC123xYz
+```
+
+| Parameter | Required | Description        |
+| --------- | -------- | ------------------ |
+| `token`   | yes      | Confirmation token |
+
+---
 
 #### Possible Responses
 
@@ -286,17 +307,19 @@ Confirms alias creation.
 
 ---
 
-### 3. `POST /forward/unsubscribe`
+### 3. `GET /forward/unsubscribe`
 
-Requests alias removal.
+Requests the removal of an existing alias.
 
-#### Input (JSON)
+#### Input (Query Parameters)
 
-```json
-{
-  "address": "github@example.org"
-}
+```http
+/forward/unsubscribe?address=github@example.org
 ```
+
+| Parameter | Required | Description                      |
+| --------- | -------- | -------------------------------- |
+| `address` | yes      | Full alias address to be removed |
 
 ---
 
@@ -314,7 +337,19 @@ Requests alias removal.
 
 ### 4. `GET /forward/unsubscribe/confirm?token=...`
 
-Confirms alias removal.
+Confirms alias removal using the token received by email.
+
+#### Input (Query Parameters)
+
+```http
+/forward/unsubscribe/confirm?token=ZyX987Ab
+```
+
+| Parameter | Required | Description                    |
+| --------- | -------- | ------------------------------ |
+| `token`   | yes      | Unsubscribe confirmation token |
+
+---
 
 #### Possible Responses
 
