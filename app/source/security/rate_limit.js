@@ -9,14 +9,17 @@ const { RATE_LIMIT_HELPERS } = require("./rate_limit.helpers.js");
 const { rateLimit: LIB_rateLimit, ipKeyGenerator } = require("express-rate-limit");
 const LIB_slowDown = require("express-slow-down");
 
-const KEY_BY_IP = (req, res) => ipKeyGenerator(req.ip) && console.log(req.ip);
+const globalLimit = Number(app_environment.RL_GLOBAL_PER_MIN ?? 300);
+
+const KEY_BY_IP = (req, res) => ipKeyGenerator(req.ip);
 
 const RATE_LIMIT = {
   HELPERS: RATE_LIMIT_HELPERS,
 
   GLOBAL_LIMITER: LIB_rateLimit({
     windowMs: 60 * 1000,
-    limit: Number(app_environment.RL_GLOBAL_PER_MIN ?? 300),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     // sem keyGenerator custom => usa default seguro + validações internas
@@ -36,7 +39,8 @@ const RATE_LIMIT = {
 
   SUBSCRIBE_LIMIT_BY_IP: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_SUBSCRIBE_PER_10MIN_PER_IP ?? 60),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "subscribe", reason: "too_many_requests_ip" },
@@ -46,7 +50,8 @@ const RATE_LIMIT = {
 
   SUBSCRIBE_LIMIT_BY_TO: LIB_rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
-    limit: Number(app_environment.RL_SUBSCRIBE_PER_HOUR_PER_TO ?? 6),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "subscribe", reason: "too_many_requests_to" },
@@ -58,7 +63,8 @@ const RATE_LIMIT = {
 
   SUBSCRIBE_LIMIT_BY_ALIAS: LIB_rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
-    limit: Number(app_environment.RL_SUBSCRIBE_PER_HOUR_PER_ALIAS ?? 20),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "subscribe", reason: "too_many_requests_alias" },
@@ -71,7 +77,8 @@ const RATE_LIMIT = {
 
   CONFIRM_LIMIT_BY_IP: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_CONFIRM_PER_10MIN_PER_IP ?? 120),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "confirm", reason: "too_many_requests_ip" },
@@ -81,7 +88,8 @@ const RATE_LIMIT = {
 
   CONFIRM_LIMIT_BY_TOKEN: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_CONFIRM_PER_10MIN_PER_TOKEN ?? 10),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "confirm", reason: "too_many_requests_token" },
@@ -107,7 +115,8 @@ const RATE_LIMIT = {
 
   UNSUBSCRIBE_LIMIT_BY_IP: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_UNSUBSCRIBE_PER_10MIN_PER_IP ?? 40),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "unsubscribe", reason: "too_many_requests_ip" },
@@ -117,7 +126,8 @@ const RATE_LIMIT = {
 
   UNSUBSCRIBE_LIMIT_BY_ADDRESS: LIB_rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
-    limit: Number(app_environment.RL_UNSUBSCRIBE_PER_HOUR_PER_ADDRESS ?? 6),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "unsubscribe", reason: "too_many_requests_address" },
@@ -133,7 +143,8 @@ const RATE_LIMIT = {
 
   UNSUBSCRIBE_CONFIRM_LIMIT_BY_IP: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_UNSUBSCRIBE_CONFIRM_PER_10MIN_PER_IP ?? 120),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "unsubscribe_confirm", reason: "too_many_requests_ip" },
@@ -143,7 +154,8 @@ const RATE_LIMIT = {
 
   UNSUBSCRIBE_CONFIRM_LIMIT_BY_TOKEN: LIB_rateLimit({
     windowMs: 10 * 60 * 1000, // 10 min
-    limit: Number(app_environment.RL_UNSUBSCRIBE_CONFIRM_PER_10MIN_PER_TOKEN ?? 10),
+    limit: globalLimit || 1,                 // evita 0
+    skip: () => globalLimit === 0,           // 0 => desliga totalmente
     standardHeaders: "draft-7",
     legacyHeaders: false,
     message: { error: "rate_limited", where: "unsubscribe_confirm", reason: "too_many_requests_token" },
