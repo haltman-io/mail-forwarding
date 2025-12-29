@@ -4,8 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "dev": "set APP_ENV=dev && node ./source/server.js",
-    "prod": "set APP_ENV=prod && node ./source/server.js"
+    "dev": "APP_ENV=dev node ./source/server.js",
+    "prod": "APP_ENV=prod node ./source/server.js"
   },
   "keywords": [],
   "author": "",
