@@ -1,19 +1,21 @@
-# Free Mail Forwarding API (Node.js)
+# Free Mail Forwarding Service
 
-⚠️ **Important prerequisite**
+This is a modern version of The Hacker's Choice's Free Mail Forwarding Service.
 
-This Node.js project **depends on the base-postfix-forwarder** to run properly.
+* https://www.thc.org/mail/
+* https://github.com/hackerschoice/mail
 
-Before installing or running this API, **you MUST read and deploy the base-postfix-forwarder first**, since this service **writes directly into the same database used by the base-postfix-forwarder** (Postfix + MariaDB stack).
+The Hacker's Choice's Free Mail Forwarding Service was developed and supported by Lou Cipher.
 
-👉 **Read first:**
-📄 [`FWD-Basestack.md`](./FWD-Basestack.md)
-
----
+* https://github.com/Lou-Cipher
 
 ## Overview
 
 This project is a **Mail Forwarding Service API** built with Node.js and Express.
+
+A simple diagram showing how it works:
+
+![dumb diagram](./github/screenshots/dumb-diagram.png)
 
 It exposes HTTP endpoints that allow users to:
 
@@ -31,6 +33,19 @@ All operations are:
 
 This API **does not receive emails**.
 It only **manages forwarding rules (aliases)** that the base-postfix-forwarder mail server will later use.
+
+---
+
+## Important
+
+⚠️ **Important prerequisite**
+
+This Node.js project **depends on the base-postfix-forwarder** to run properly.
+
+Before installing or running this API, **you MUST read and deploy the base-postfix-forwarder first**, since this service **writes directly into the same database used by the base-postfix-forwarder** (Postfix + MariaDB stack).
+
+👉 **Read first:**
+📄 [`FWD-Basestack.md`](./FWD-Basestack.md)
 
 ---
 
