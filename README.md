@@ -33,13 +33,16 @@ For admins: https://docs.haltman.io/knowledge-base/mail-forwarding-selfhost/get-
 * Domain `mvttrb.com` by [@mvttrb](https://github.com/mvttrb)
 * Domain `pwnbuffer.org` by [@pwnbuffer](https://github.com/pwnbuffer)
 
-## Bugs
-If you any found a bug i, we wil be hpy. Sent a mail to andfE
+## Bugs and security problems
+If you have found a bug or security problem, please send the details:
+* [security@haltman.io](mailto:security@haltman.io)
+
+We don't have the funds to reward your discovery, but will be happy to mention your nickname in the next release with the fix.
 
 ## Shoutz 🔥
-* All other Brazilian members of [Haltman.io](https://haltman.io/) 🔥
-* Everyone on [The Hacker's Choice](https://thc.org/) crew 🔥
-* The hackers of [Pwnbuffer.org](https://pwnbuffer.org) 🔥
+* [Haltman.io](https://haltman.io/) 🔥
+* [The Hacker's Choice](https://thc.org/) crew 🔥
+* [Pwnbuffer.org](https://pwnbuffer.org) 🔥
 
 ## License
-<img src="https://img.shields.io/badge/UNLICENSE.ORG-181717?style=plastic&logo=unlicense&logoColor=white&link=https%3A%2F%2Funlicense.org%2F" alt="Badge"> (or just do what the fuck you wanna do)
+<img src="https://img.shields.io/badge/UNLICENSE.ORG-181717?style=plastic&logo=unlicense&logoColor=white&link=https%3A%2F%2Funlicense.org%2F" alt="Badge">
