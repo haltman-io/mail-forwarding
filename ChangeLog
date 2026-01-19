@@ -1,0 +1,4 @@
+1.0.0-dev - 2026-01-18
+    * Repository migrated to “Monorepo” model to host Core, API, and UI;
+    * Sub-directory "www.thc.org" is created to keep the old script from Lou-Cipher
+    * README.md completely updated
