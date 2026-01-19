@@ -29,7 +29,7 @@ For users: https://docs.haltman.io/knowledge-base/mail-forwarding/create-alias-u
 For admins: https://docs.haltman.io/knowledge-base/mail-forwarding-selfhost/get-started
 
 ## Added domains
-* Domain `alias-for-lammers` by [@Yyax13](https://github.com/Yyax13)
+* Domain `alias-for-lammers.howosec.com` by [@Yyax13](https://github.com/Yyax13)
 * Domain `mvttrb.com` by [@mvttrb](https://github.com/mvttrb)
 * Domain `pwnbuffer.org` by [@pwnbuffer](https://github.com/pwnbuffer)
 
