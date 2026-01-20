@@ -8,7 +8,8 @@
 <br>
 
 <!-- Community -->
-<img src="https://img.shields.io/badge/Join%20us-Telegram-blue?style=plastic&labelColor=181717&logo=telegram&logoColor=white&link=https%3A%2F%2Ft.me%2Fhaltman_group" alt="Telegram">
+<a href="https://t.me/haltman_group">![Telegram](https://img.shields.io/badge/Join%20us-Telegram-blue?style=plastic&labelColor=181717&logo=telegram&logoColor=white&link=https%3A%2F%2Ft.me%2Fhaltman_group)</a>
+
 
 </div>
 
