@@ -18,7 +18,7 @@ const RE_DOMAIN =
   /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
 
 function readDomains(): string[] {
-  const raw = process.env.NEXT_PUBLIC_DOMAINS;
+  const raw = process.env.NEXT_PUBLIC_DOMAINS ?? "";
   return Array.from(
     new Set(
       raw
@@ -30,7 +30,7 @@ function readDomains(): string[] {
   );
 }
 
-const API_HOST = (process.env.NEXT_PUBLIC_API_HOST).trim();
+const API_HOST = (process.env.NEXT_PUBLIC_API_HOST ?? "https://mail.haltman.io").trim();
 const DOMAINS = readDomains();
 
 export function SubscribeCard() {
