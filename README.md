@@ -3,9 +3,8 @@
 <div align="center">
 
 <!-- Runtime / Status -->
-<img src="https://img.shields.io/badge/forward.haltman.io-Production-46c41c?style=plastic&labelColor=181717&link=https%3A%2F%2Fforward.haltman.io%2F" alt="Production">
-<img src="https://img.shields.io/badge/docs.haltman.io-Knowledge--Base-white?style=plastic&labelColor=181717&link=https%3A%2F%2Fdocs.haltman.io%2Fknowledge-base%2Fmail-forwarding-selfhost%2Fget-started" alt="Docs">
-
+<a href="https://forward.haltman.io/">![Production](https://img.shields.io/badge/forward.haltman.io-Production-46c41c?style=plastic&labelColor=181717&link=https%3A%2F%2Fforward.haltman.io%2F&link=https%3A%2F%2Fforward.haltman.io%2F)</a>
+<a href="https://docs.haltman.io/">![Docs](https://img.shields.io/badge/docs.haltman.io-Knowledge--Base-white?style=plastic&labelColor=181717&link=https%3A%2F%2Fdocs.haltman.io%2Fknowledge-base%2Fmail-forwarding-selfhost%2Fget-started)</a>
 <br>
 
 <!-- Community -->
