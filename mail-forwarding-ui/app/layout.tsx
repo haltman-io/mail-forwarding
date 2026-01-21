@@ -5,6 +5,9 @@ import ThemeProvider from "@/components/theme-provider";
 export const metadata: Metadata = {
   title: "Free Mail Forwarding",
   description: "Privacy-first alias forwarding",
+  alternates: {
+    canonical: "https://forward.haltman.io",
+  },
 };
 
 export default function RootLayout({

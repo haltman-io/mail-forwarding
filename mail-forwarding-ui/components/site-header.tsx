@@ -23,7 +23,7 @@ export function SiteHeader() {
                   href="#"
                   className="text-sm text-foreground/90 hover:text-foreground"
                 >
-                  Free Mail Forwarding Service
+                  mail-forwarding
                 </Link>
               </NavigationMenuItem>
             </NavigationMenuList>
@@ -33,14 +33,8 @@ export function SiteHeader() {
         {/* Right: icons */}
         <div className="flex w-1/3 items-center justify-end gap-1">
           <Button asChild variant="ghost" size="icon" aria-label="GitHub">
-            <Link href="https://github.com/haltman-io/mail-forwarding-ui" target="_blank" rel="noreferrer">
+            <Link href="https://github.com/haltman-io/mail-forwarding" target="_blank" rel="noreferrer">
               <Github className="h-5 w-5" />
-            </Link>
-          </Button>
-
-          <Button asChild variant="ghost" size="icon" aria-label="Telegram">
-            <Link href="https://t.me/haltman_group" target="_blank" rel="noreferrer">
-              <Send className="h-5 w-5" />
             </Link>
           </Button>
 

@@ -11,7 +11,7 @@ export default function Page() {
       <main className="mx-auto max-w-6xl px-4 py-10">
         <section className="mx-auto max-w-3xl space-y-4">
           <h1 className="text-3xl font-semibold tracking-tight">
-            Free Mail Forwarding
+            Free Mail Forwarding Service
           </h1>
 
           <p className="text-muted-foreground">
@@ -33,7 +33,7 @@ export default function Page() {
           </div>
 
           <div className="text-sm text-muted-foreground">
-            Short thanks to{" "}
+            Thanks to{" "}
             <Link
               href="https://github.com/Lou-Cipher"
               target="_blank"
