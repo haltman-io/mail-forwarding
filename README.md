@@ -53,6 +53,8 @@ All guides, architecture details and self-hosting instructions are maintained in
 
 ## Community-supported domains
 
+- `smokes.thc.org` by [@hackerschoice](https://thc.org/)
+- `segfault.net` by by [@hackerschoice](https://thc.org/)
 - `alias-for-lammers.howosec.com` by [@Yyax13](https://github.com/Yyax13)
 - `mvttrb.com` by [@mvttrb](https://github.com/mvttrb)
 - `pwnbuffer.org` by [@pwnbuffer](https://github.com/pwnbuffer)
