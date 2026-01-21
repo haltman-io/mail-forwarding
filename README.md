@@ -33,6 +33,10 @@ https://forward.haltman.io/
 - **Mail Forwarding UI**  
   Next.js · shadcn · TailwindCSS · Radix
 
+- **Mail Forwarding Ask**  (*NEW: multi-tenant support*)  
+  Caddy · Node.js · Express.js
+
+
 ---
 
 ## Documentation
