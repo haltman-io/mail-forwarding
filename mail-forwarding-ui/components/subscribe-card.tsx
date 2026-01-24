@@ -10,28 +10,15 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Copy, Wand2, ShieldCheck, ShieldAlert, Terminal, MailX, MailPlus } from "lucide-react";
+import { fetchDomains, normalizeDomains, RE_DOMAIN } from "@/lib/domains";
+
 
 type ApiResponse = Record<string, unknown>;
 
 const RE_NAME = /^[a-z0-9](?:[a-z0-9.]{0,62}[a-z0-9])?$/;
-const RE_DOMAIN =
-  /^(?=.{1,253}$)(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,63}$/;
-
-function readDomains(): string[] {
-  const raw = process.env.NEXT_PUBLIC_DOMAINS ?? "";
-  return Array.from(
-    new Set(
-      raw
-        .split(",")
-        .map((s) => s.trim().toLowerCase())
-        .filter(Boolean)
-        .filter((d) => RE_DOMAIN.test(d))
-    )
-  );
-}
 
 const API_HOST = (process.env.NEXT_PUBLIC_API_HOST ?? "https://mail.haltman.io").trim();
-const DOMAINS = readDomains();
+const DOMAINS_URL = `${API_HOST}/domains`;
 
 function isProbablyEmail(v: string) {
   const s = v.trim();
@@ -59,7 +46,8 @@ function badgeClasses(kind: "ok" | "bad" | "idle") {
 export function SubscribeCard() {
   // subscribe form
   const [name, setName] = React.useState("");
-  const [domain, setDomain] = React.useState(DOMAINS[0] ?? "");
+  const [domains, setDomains] = React.useState<string[]>([]);
+  const [domain, setDomain] = React.useState("");
   const [to, setTo] = React.useState("");
 
   // unsubscribe form
@@ -71,6 +59,37 @@ export function SubscribeCard() {
   const [ok, setOk] = React.useState<boolean | null>(null);
   const [payload, setPayload] = React.useState<ApiResponse | null>(null);
   const [errorText, setErrorText] = React.useState<string | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+
+    (async () => {
+      try {
+        const list = await fetchDomains(DOMAINS_URL);
+        if (cancelled) return;
+
+        // fallback opcional: se a API falhar, usa NEXT_PUBLIC_DOMAINS
+        const fallbackRaw = process.env.NEXT_PUBLIC_DOMAINS ?? "";
+        const fallback = normalizeDomains(fallbackRaw.split(","));
+
+        const finalList = list.length ? list : fallback;
+
+        setDomains(finalList);
+
+        // seta default do select (se ainda não tiver)
+        setDomain((cur) => cur || finalList[0] || "");
+      } catch {
+        if (cancelled) return;
+        setDomains([]);
+        setDomain("");
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
 
   const previewHandle = React.useMemo(() => clampLower(name) || "handle", [name]);
   const previewDomain = React.useMemo(() => clampLower(domain) || "domain.tld", [domain]);
@@ -107,13 +126,13 @@ export function SubscribeCard() {
   }
 
   function setExampleSubscribe() {
-    setName("docs.curl");
-    setDomain(DOMAINS[0] ?? "fwd.haltman.io");
+    setName("hacker");
+    setDomain(domains[0] ?? "segfault.net");
     setTo("you@proton.me");
   }
 
   function setExampleUnsub() {
-    setAlias("docs.curl@fwd.haltman.io");
+    setAlias("hacker@segfault.net");
   }
 
   async function doFetch(url: string) {
@@ -302,15 +321,15 @@ export function SubscribeCard() {
                       <SelectValue placeholder="Select a domain" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DOMAINS.length ? (
-                        DOMAINS.map((d) => (
+                      {domains.length ? (
+                        domains.map((d) => (
                           <SelectItem key={d} value={d}>
                             {d}
                           </SelectItem>
                         ))
                       ) : (
                         <SelectItem value="__none" disabled>
-                          No domains configured (check NEXT_PUBLIC_DOMAINS)
+                          No domains available (API /domains failed)
                         </SelectItem>
                       )}
                     </SelectContent>
@@ -336,7 +355,7 @@ export function SubscribeCard() {
                   <Button
                     type="submit"
                     className="w-full sm:w-auto"
-                    disabled={loading || !DOMAINS.length}
+                    disabled={loading || !domains.length}
                   >
                     {loading ? "Sending…" : "Request alias"}
                   </Button>
@@ -346,7 +365,7 @@ export function SubscribeCard() {
                     variant="outline"
                     className="w-full border-white/10 bg-white/5 hover:bg-white/10 sm:w-auto"
                     onClick={() => copy(curlSubscribe)}
-                    disabled={!DOMAINS.length}
+                    disabled={!domains.length}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Copy subscribe cURL
@@ -363,7 +382,6 @@ export function SubscribeCard() {
                       • A new alias like <span className="font-mono text-zinc-200">{previewAlias}</span>
                     </li>
                     <li>• Forwarding to the inbox you control</li>
-                    <li>• Fast API call (GET request) — no local state needed</li>
                   </ul>
 
                   <div className="mt-4 rounded-lg border border-white/10 bg-black/40 p-3">
@@ -495,7 +513,7 @@ export function SubscribeCard() {
                     size="sm"
                     className="border-white/10 bg-white/5 hover:bg-white/10"
                     onClick={() => copy(curlSubscribe)}
-                    disabled={!DOMAINS.length}
+                    disabled={!domains.length}
                   >
                     <Copy className="mr-2 h-4 w-4" />
                     Copy subscribe
