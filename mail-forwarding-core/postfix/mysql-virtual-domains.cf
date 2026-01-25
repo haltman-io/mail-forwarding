@@ -1,0 +1,5 @@
+user = <MARIADB_USERNAME>
+password = <MARIADB_PASSWORD>
+hosts = 127.0.0.1
+dbname = <MARIADB_DATABASE>
+query = SELECT 1 FROM domain WHERE name='%s' AND active=1
