@@ -7,10 +7,30 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Copy, Wand2, ShieldCheck, ShieldAlert, Terminal, MailX, MailPlus } from "lucide-react";
+import { Copy, Wand2, ShieldCheck, ShieldAlert, Terminal, MailX, MailPlus, KeyRound } from "lucide-react";
 import { fetchDomains, normalizeDomains, RE_DOMAIN } from "@/lib/domains";
+import { toast } from "sonner";
 
 
 type ApiResponse = Record<string, unknown>;
@@ -60,6 +80,25 @@ export function SubscribeCard() {
   const [payload, setPayload] = React.useState<ApiResponse | null>(null);
   const [errorText, setErrorText] = React.useState<string | null>(null);
 
+  // confirmation dialog
+  const [confirmDialogOpen, setConfirmDialogOpen] = React.useState(false);
+  const [confirmCloseOpen, setConfirmCloseOpen] = React.useState(false);
+  const [confirmCode, setConfirmCode] = React.useState("");
+  const [confirmIntent, setConfirmIntent] = React.useState<"subscribe" | "unsubscribe" | null>(null);
+  const [confirmLoading, setConfirmLoading] = React.useState(false);
+  const [confirmErrorText, setConfirmErrorText] = React.useState<string | null>(null);
+  const confirmCloseBypass = React.useRef(false);
+
+  // api token dialog
+  const [apiDialogOpen, setApiDialogOpen] = React.useState(false);
+  const [apiEmail, setApiEmail] = React.useState("");
+  const [apiDays, setApiDays] = React.useState("30");
+  const [tokenLoading, setTokenLoading] = React.useState(false);
+  const [tokenOk, setTokenOk] = React.useState<boolean | null>(null);
+  const [tokenPayload, setTokenPayload] = React.useState<ApiResponse | null>(null);
+  const [tokenErrorText, setTokenErrorText] = React.useState<string | null>(null);
+  const [showApiSafety, setShowApiSafety] = React.useState(false);
+
   React.useEffect(() => {
     let cancelled = false;
 
@@ -89,6 +128,22 @@ export function SubscribeCard() {
       cancelled = true;
     };
   }, []);
+
+  React.useEffect(() => {
+    try {
+      const dismissed = window.localStorage.getItem("mf_api_token_safety_hidden");
+      setShowApiSafety(dismissed !== "1");
+    } catch {
+      setShowApiSafety(true);
+    }
+  }, []);
+
+  React.useEffect(() => {
+    if (!apiDialogOpen) return;
+    setTokenOk(null);
+    setTokenPayload(null);
+    setTokenErrorText(null);
+  }, [apiDialogOpen]);
 
 
   const previewHandle = React.useMemo(() => clampLower(name) || "handle", [name]);
@@ -125,6 +180,45 @@ export function SubscribeCard() {
     setErrorText(null);
   }
 
+  function resetTokenResult() {
+    setTokenOk(null);
+    setTokenPayload(null);
+    setTokenErrorText(null);
+  }
+
+  function openConfirmDialog(intent: "subscribe" | "unsubscribe") {
+    confirmCloseBypass.current = false;
+    setConfirmIntent(intent);
+    setConfirmCode("");
+    setConfirmErrorText(null);
+    setConfirmCloseOpen(false);
+    setConfirmLoading(false);
+    setConfirmDialogOpen(true);
+  }
+
+  function closeConfirmDialog() {
+    confirmCloseBypass.current = true;
+    setConfirmDialogOpen(false);
+    setConfirmCloseOpen(false);
+    setConfirmCode("");
+    setConfirmErrorText(null);
+    setConfirmLoading(false);
+    setConfirmIntent(null);
+  }
+
+  function requestConfirmClose() {
+    setConfirmCloseOpen(true);
+  }
+
+  function dismissApiSafety() {
+    setShowApiSafety(false);
+    try {
+      window.localStorage.setItem("mf_api_token_safety_hidden", "1");
+    } catch {
+      // ignore storage errors
+    }
+  }
+
   function setExampleSubscribe() {
     setName("hacker");
     setDomain(domains[0] ?? "segfault.net");
@@ -135,7 +229,7 @@ export function SubscribeCard() {
     setAlias("hacker@segfault.net");
   }
 
-  async function doFetch(url: string) {
+  async function doFetch(url: string, intent?: "subscribe" | "unsubscribe") {
     setLoading(true);
     try {
       const res = await fetch(url, { method: "GET" });
@@ -144,7 +238,11 @@ export function SubscribeCard() {
 
       setOk(success);
       setPayload(data);
-      if (!success) setErrorText("Request failed. See response below.");
+      if (success && intent) {
+        openConfirmDialog(intent);
+      } else if (!success) {
+        setErrorText("Request failed. See response below.");
+      }
     } catch (err: any) {
       setOk(false);
       setErrorText(`Network error: ${String(err?.message ?? err)}`);
@@ -184,7 +282,7 @@ export function SubscribeCard() {
       to: t,
     }).toString()}`;
 
-    await doFetch(url);
+    await doFetch(url, "subscribe");
   }
 
   async function onUnsubscribe(e: React.FormEvent) {
@@ -200,7 +298,108 @@ export function SubscribeCard() {
     }
 
     const url = `${API_HOST}/forward/unsubscribe?${new URLSearchParams({ alias: a }).toString()}`;
-    await doFetch(url);
+    await doFetch(url, "unsubscribe");
+  }
+
+  async function onCreateToken(e: React.FormEvent) {
+    e.preventDefault();
+    resetTokenResult();
+
+    const email = apiEmail.trim();
+    const days = Number.parseInt(apiDays, 10);
+
+    if (!isProbablyEmail(email)) {
+      setTokenOk(false);
+      setTokenErrorText("Valid email is required.");
+      return;
+    }
+
+    if (!Number.isFinite(days) || days < 1 || days > 90) {
+      setTokenOk(false);
+      setTokenErrorText("Validity days must be between 1 and 90.");
+      return;
+    }
+
+    setTokenLoading(true);
+    try {
+      const res = await fetch(`${API_HOST}/api/credentials/create`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, days }),
+      });
+      const data = (await res.json()) as ApiResponse;
+      const success = res.ok && (data as any)?.ok !== false;
+
+      setTokenOk(success);
+      setTokenPayload(data);
+      if (!success) setTokenErrorText("Request failed. See response below.");
+    } catch (err: any) {
+      setTokenOk(false);
+      setTokenErrorText(`Network error: ${String(err?.message ?? err)}`);
+      setTokenPayload({ ok: false, error: "network_error", detail: String(err) });
+    } finally {
+      setTokenLoading(false);
+    }
+  }
+
+  async function onConfirmCode(e: React.FormEvent) {
+    e.preventDefault();
+    setConfirmErrorText(null);
+
+    const token = confirmCode;
+    if (token.length < 12 || token.length > 64) {
+      setConfirmErrorText("Confirmation code must be 12–64 characters.");
+      return;
+    }
+
+    setConfirmLoading(true);
+    try {
+      const res = await fetch(
+        `${API_HOST}/forward/confirm?${new URLSearchParams({ token }).toString()}`,
+        { method: "GET" }
+      );
+      const data = (await res.json()) as ApiResponse;
+      const invalid = (data as any)?.ok === false && (data as any)?.error === "invalid_or_expired";
+      const confirmed = (data as any)?.ok === true && (data as any)?.confirmed === true;
+
+      if (invalid) {
+        setConfirmErrorText("Code is invalid or expired. Please try again.");
+        toast.error("Invalid code", {
+          description: "The confirmation code is invalid or expired.",
+        });
+        return;
+      }
+
+      if (!res.ok && !confirmed) {
+        setConfirmErrorText("Request failed. Please try again.");
+        return;
+      }
+
+      if (confirmed) {
+        const intent = typeof (data as any)?.intent === "string"
+          ? ((data as any)?.intent as "subscribe" | "unsubscribe")
+          : confirmIntent;
+        const created = (data as any)?.created === true;
+        const address = typeof (data as any)?.address === "string" ? (data as any)?.address : "";
+
+        closeConfirmDialog();
+
+        const title = created || intent !== "unsubscribe" ? "Alias confirmed" : "Removal confirmed";
+        const description =
+          created
+            ? `Alias ${address ? address + " " : ""}created successfully.`
+            : "Alias removal confirmed successfully.";
+
+        toast.success(title, { description });
+        return;
+      }
+
+      setConfirmErrorText("The API returned an unexpected response. Please try again.");
+    } catch (err: any) {
+      setConfirmErrorText(`Network error: ${String(err?.message ?? err)}`);
+    } finally {
+      setConfirmLoading(false);
+    }
   }
 
   return (
@@ -210,6 +409,93 @@ export function SubscribeCard() {
         <div className="absolute -top-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-white/5 blur-3xl" />
         <div className="absolute -bottom-24 left-1/2 h-72 w-[42rem] -translate-x-1/2 rounded-full bg-white/5 blur-3xl" />
       </div>
+
+      <Dialog
+        open={confirmDialogOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            if (confirmCloseBypass.current) {
+              confirmCloseBypass.current = false;
+              return;
+            }
+            requestConfirmClose();
+            return;
+          }
+          confirmCloseBypass.current = false;
+          setConfirmDialogOpen(true);
+        }}
+      >
+        <DialogContent
+          className="border-white/10 bg-zinc-950/95"
+          onEscapeKeyDown={(event) => {
+            event.preventDefault();
+            requestConfirmClose();
+          }}
+          onInteractOutside={(event) => {
+            event.preventDefault();
+            requestConfirmClose();
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>Confirm email code</DialogTitle>
+            <DialogDescription>
+              We sent a confirmation code to your email. Paste it below to finish.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={onConfirmCode} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="confirm-code">Confirmation code</Label>
+              <Input
+                id="confirm-code"
+                placeholder="Paste confirmation code"
+                value={confirmCode}
+                onChange={(e) => {
+                  setConfirmCode(e.target.value);
+                  if (confirmErrorText) setConfirmErrorText(null);
+                }}
+                autoCapitalize="none"
+                spellCheck={false}
+                maxLength={64}
+                className="bg-black/30"
+              />
+              <p className="text-xs text-zinc-400">Code length: 12–64 characters.</p>
+            </div>
+
+            {confirmErrorText && (
+              <Alert variant="destructive" className="border-white/10 bg-black/30">
+                <AlertTitle>Confirmation failed</AlertTitle>
+                <AlertDescription className="text-zinc-300">
+                  {confirmErrorText}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <DialogFooter className="sm:justify-end">
+              <Button type="submit" disabled={confirmLoading}>
+                {confirmLoading ? "Confirming…" : "Confirm code"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={confirmCloseOpen} onOpenChange={setConfirmCloseOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Close confirmation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              If you close now, your confirmation progress may be lost.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Keep editing</AlertDialogCancel>
+            <AlertDialogAction onClick={closeConfirmDialog}>
+              Close anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <CardHeader className="relative">
         <div className="flex items-start justify-between gap-3">
@@ -222,17 +508,170 @@ export function SubscribeCard() {
             </CardDescription>
           </div>
 
-          <div className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClasses(statusKind)}`}>
-            <span className="inline-flex items-center gap-2">
-              {statusKind === "ok" ? (
-                <ShieldCheck className="h-3.5 w-3.5" />
-              ) : statusKind === "bad" ? (
-                <ShieldAlert className="h-3.5 w-3.5" />
-              ) : (
-                <Terminal className="h-3.5 w-3.5" />
-              )}
-              {statusText}
-            </span>
+          <div className="flex items-center gap-2">
+            <Dialog open={apiDialogOpen} onOpenChange={setApiDialogOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="border-white/10 bg-white/5 hover:bg-white/10"
+                  title="Create a free token to automate alias management via API."
+                  aria-label="Create a free token to automate alias management via API."
+                >
+                  <KeyRound className="mr-2 h-4 w-4" />
+                  Get API Token
+                </Button>
+              </DialogTrigger>
+
+              <DialogContent className="border-white/10 bg-zinc-950/95">
+                <DialogHeader>
+                  <DialogTitle>Free API Token</DialogTitle>
+                  <DialogDescription>
+                    A token lets you create aliases for your own email without re-verifying ownership each time.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">❌ Without API</p>
+                      <p className="mt-2 text-sm text-zinc-300">
+                        You need to verify your email for each new alias address you create.
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/30 p-3">
+                      <p className="text-xs uppercase tracking-wide text-zinc-500">✅ With API</p>
+                      <ul className="mt-2 space-y-1 text-sm text-zinc-300">
+                        <li>You need to verify your email for 1 time only.</li>
+                        <li>All your aliases will be created without email address confirmation.</li>
+                      </ul>
+                    </div>
+                  </div>
+
+                  {showApiSafety && (
+                    <Alert className="border-white/10 bg-black/30">
+                      <AlertTitle className="flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4" />
+                        Security note
+                      </AlertTitle>
+                      <AlertDescription className="flex flex-col gap-3 text-zinc-300">
+                        <span>
+                          Never share your API token. Anyone with it can create aliases for your inbox.
+                        </span>
+                        <div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="border-white/10 bg-white/5 hover:bg-white/10"
+                            onClick={dismissApiSafety}
+                          >
+                            Got it
+                          </Button>
+                        </div>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  <form onSubmit={onCreateToken} className="space-y-4">
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="api-email">Email</Label>
+                        <Input
+                          id="api-email"
+                          type="email"
+                          placeholder="you@proton.me"
+                          value={apiEmail}
+                          onChange={(e) => setApiEmail(e.target.value)}
+                          autoCapitalize="none"
+                          spellCheck={false}
+                          className="bg-black/30"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="api-days">Token validity (days)</Label>
+                        <Input
+                          id="api-days"
+                          type="number"
+                          min={1}
+                          max={90}
+                          placeholder="30"
+                          value={apiDays}
+                          onChange={(e) => setApiDays(e.target.value)}
+                          className="bg-black/30"
+                        />
+                        <p className="text-xs text-zinc-400">Choose 1–90 days.</p>
+                      </div>
+                    </div>
+
+                    <DialogFooter className="flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="text-xs text-zinc-400">
+                        We’ll email a one-time confirmation link (15 min) to view the token.
+                      </p>
+                      <Button type="submit" disabled={tokenLoading}>
+                        {tokenLoading ? "Generating…" : "Generate token"}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+
+                  {tokenOk !== null && (
+                    <Alert variant={tokenOk ? "default" : "destructive"} className="border-white/10 bg-black/30">
+                      <AlertTitle className="flex items-center gap-2">
+                        {tokenOk ? <ShieldCheck className="h-4 w-4" /> : <ShieldAlert className="h-4 w-4" />}
+                        {tokenOk ? "Check your email" : "Error"}
+                      </AlertTitle>
+                      <AlertDescription className="text-zinc-300">
+                        {tokenOk ? (
+                          <>
+                            We sent a confirmation link to your email. Open it within 15 minutes to reveal the token.
+                          </>
+                        ) : (
+                          <>{tokenErrorText ?? "The API returned an error response. See the JSON below."}</>
+                        )}
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {tokenPayload && (
+                    <div className="rounded-xl border border-white/10 bg-black/30 p-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-zinc-200">Response payload</p>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="border-white/10 bg-white/5 hover:bg-white/10"
+                          onClick={() => copy(safeJson(tokenPayload))}
+                        >
+                          <Copy className="mr-2 h-4 w-4" />
+                          Copy JSON
+                        </Button>
+                      </div>
+
+                      <Separator className="my-3 bg-white/10" />
+
+                      <pre className="overflow-auto whitespace-pre-wrap break-words font-mono text-xs text-zinc-200">
+                        {safeJson(tokenPayload)}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            <div className={`shrink-0 rounded-full border px-3 py-1 text-xs ${badgeClasses(statusKind)}`}>
+              <span className="inline-flex items-center gap-2">
+                {statusKind === "ok" ? (
+                  <ShieldCheck className="h-3.5 w-3.5" />
+                ) : statusKind === "bad" ? (
+                  <ShieldAlert className="h-3.5 w-3.5" />
+                ) : (
+                  <Terminal className="h-3.5 w-3.5" />
+                )}
+                {statusText}
+              </span>
+            </div>
           </div>
         </div>
 
