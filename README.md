@@ -173,7 +173,7 @@ The key is: **every time we tried something different, we end up learning someth
 
 We even created a simple schema with Caddy using on-demand TLS because we couldn't stand having to ask our friends anymore, "yo b1tch, please create this TXT=v3rcel... entry on DNS before doing that thing", we kicked them out and hosted the damn thing ourselves. 
 
-I allowed us to mature internally, meet new people who knew a lot about something we didn't know or knew very little about, absorb knowledge for life which we will replicate professionally, in open-source projects, to impress the g1rls on the bar or whatever else.
+It allowed us to mature internally, meet new people who knew a lot about something we didn't know or knew very little about, absorb knowledge for life which we will replicate professionally, in open-source projects, to impress the g1rls on the bar or whatever else.
 
 **BURN EVERYTHING WHEN NEEDED**:   
 We want to destroy everything whenever, wherever, and when we want. 
