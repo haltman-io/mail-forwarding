@@ -1,5 +1,0 @@
-user = <MARIADB_USERNAME>
-password = <MARIADB_PASSWORD>
-hosts = 127.0.0.1
-dbname = <MARIADB_DATABASE>
-query = SELECT 'REJECT forged local sender' FROM domain WHERE active=1 AND name='%d' LIMIT 1
