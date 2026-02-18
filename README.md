@@ -78,9 +78,9 @@ Even with limited resources, we were able to create a very flexible solution by 
 
 ## Description
 
-This system is a mail-forwarding management stack. It allows users to create and remove email aliases securely. The project is divided into three main layers:
+This system is a mail-forwarding management stack. It allows users to create and remove email aliases securely. The project is divided into these main layers:
 
-1. **mail-forwarding-core** (that is the unique that's really required)
+1. **mail-forwarding-core** (that is the unique that's really required for minimal deployments)
 2. **mail-forwarding-api**
 3. **mail-forwarding-ui**
 4. **mail-forwarding-dns-checker**
