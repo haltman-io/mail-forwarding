@@ -10,195 +10,301 @@
 
 ---
 
-This repository is simply an aggregator of information. The idea here is to provide you with an overview of Haltman.io's Mail Forwarding.
+This repository is an overview and aggregator for **Haltman.io's Mail Forwarding** — a free, open-source email forwarding stack built and maintained by [Haltman.io](https://haltman.io) and [The Hacker's Choice](https://www.thc.org). The source code for each component lives in its own repository, linked below.
 
 ---
 
-## WTF is this?
+## What is this?
 
-It's a free, complete and open-source solution we created to build our own "plug and play" email forwarding system. 
+Your real email address is the master key. It ties your bank, your medical records, your forum accounts, and your streaming subscriptions into one single, correlatable identity. In 2025, over 16 billion credentials were compiled from infostealer malware and prior breaches. Your inbox isn't private — it's a liability sitting in a hundred databases you've never heard of.
 
-### Available domains
+Email alias services exist to fix this. You get an address like `something@somedomain.net`, it forwards to your real inbox, and the service you signed up for never sees who you are. If it leaks, you kill the alias. Done.
+
+SimpleLogin, addy.io, Firefox Relay — they all do this. They work. But we didn't want a product. We wanted **infrastructure**. Our own. Under our control. With no limits, no pricing tiers, and the ability to burn everything to the ground whenever we felt like it.
+
+So we built one.
+
+---
+
+## How to use it
+
+**Web UI**: Go to [mail.thc.org](https://mail.thc.org). Pick a handle, pick a domain (50 available), enter your real email. Confirm the 6-digit token. Done. No account. No payment. No login.
+
+**Terminal**:
+```bash
+curl 'https://mail.haltman.io/api/forward/subscribe?name=myhandle&domain=segfault.net&to=you@proton.me'
+# check your inbox, grab the 6-digit token
+curl 'https://mail.haltman.io/api/forward/confirm?token=123456'
+```
+
+**API key**: Request one via the UI or API. Confirmed by email, shown once, stored as a hash. Use it in `X-API-KEY` for programmatic management.
+
+**Firefox add-on**: [Available on AMO](https://addons.mozilla.org/en-US/firefox/addon/email-alias-manager/). Stores your API key locally (AES-GCM encrypted, PBKDF2 key derivation). Communicates only with the API. No browsing history, no analytics, no telemetry.
+
+---
+
+## Screenshots
+
+#### Web UI
+> [mail.thc.org](https://mail.thc.org/)
+
+![Mail forwarding web UI](image-1.png)
+
+#### Browser Extension (Mozilla Firefox)
+> [Email Alias Manager on AMO](https://addons.mozilla.org/en-US/firefox/addon/email-alias-manager/)
+
+![Browser extension - alias creation](image-3.png)
+
+![Browser extension - alias management](image-4.png)
+
+#### API Documentation
+> [dev.haltman.io/api-reference](https://dev.haltman.io/api-reference/get-domains)
+
+![API documentation](image-2.png)
+
+---
+
+## Available domains
+
+The service offers 50 domains, several with roots in the security and hacker community.
 
 | - | - | - | - |
-| ---------------- | ---------------- | ----------------- | --------------------- | 
-| 503.lat          | abin.lat         | **_pwnd.lat_**          | **_revil.org_**             |                    
-| **_lockbit.io_**       | **_polkit.org_**       | haltman.org       | **_segfault.net_**          |                   
-| **_unhandle.org_**     | **_homoglyph.org_**    | **_mishandle.org_**     | **_metasploit.io_**         |                 
-| 1337.meu.bingo   | **_smokes.thc.org_**   | **_kerberoast.org_**    | thc.extencil.me       |              
-| mvttrb.com | **_stealth.rest_** | fwd.haltman.io | halt.ciphine.com | alias-for-lammers.howosec.com |
-| **_reads.phrack.org_** | **_cobaltstrike.org_** | **_johntheripper.org_** | **_the.hackerschoice.org_** |  
+| ---------------- | ---------------- | ----------------- | --------------------- |
+| 503.lat          | abin.lat         | pwnd.lat          | revil.org             |
+| lockbit.io       | polkit.org       | haltman.org       | segfault.net          |
+| unhandle.org     | homoglyph.org    | mishandle.org     | metasploit.io         |
+| 1337.meu.bingo   | smokes.thc.org   | kerberoast.org    | thc.extencil.me       |
+| mvttrb.com       | stealth.rest     | fwd.haltman.io    | halt.ciphine.com      |
+| reads.phrack.org | cobaltstrike.org | johntheripper.org | the.hackerschoice.org |
+| alias-for-lammers.howosec.com | | | |
 
+Some notable domains:
 
-### Preview (some screenshots)
+- `reads.phrack.org` — Phrack, the original hacking e-zine
+- `smokes.thc.org` — The Hacker's Choice, since 1995
+- `free.team-teso.net` — Team TESO, early-2000s exploit research
+- `segfault.net` — general-purpose, disposable
+- `ghetto.eurocompton.net` — oldest IDS enemy
+- `lulz.antisec.net` — you know what it is
 
-#### Front-end (UI)
-> Source: https://mail.thc.org/
+> **Note:** Some domains like `metasploit.io`, `polkit.org`, `cobaltstrike.org`, and `johntheripper.org` were found available for public registration and integrated into the pool. They are not affiliated with the original projects. The UI shows a clear disclaimer — non-profit, open-source, community use.
 
-![alt text](image-1.png)
+---
 
-#### Browser extension (Mozilla Firefox)
-> Source: https://addons.mozilla.org/en-US/firefox/addon/email-alias-manager-free/
+## Architecture
 
-![alt text](image-3.png)
+The stack has three layers. No application code touches email — Postfix moves mail, Dovecot authenticates senders, the API manages rules. Separation of concerns, the way it should be.
 
+### 1. Core (Postfix + Dovecot + PostSRSd + MariaDB + OpenDKIM)
 
-![alt text](image-4.png)
+This is the mail transport layer.
 
-#### API documentation
-> Source: https://dev.haltman.io/api-reference/get-domains
+- **Postfix** resolves recipients through two lookup layers — first handle-based (`alias_handle`), then address-based (`alias`) — with recipient allowlisting, domain verification (`domain`), and sender ACL enforcement (`smtp_sender_acl`) all backed by 8 MySQL map files. Inbound SRS addresses from external sources are explicitly rejected.
+- **Dovecot** provides SASL authentication for the submission path (port 587, localhost only). Credentials are verified against `smtp_users` via TCP on `127.0.0.1:12345`. Postfix enforces a deny-by-default sender policy: if your login isn't mapped to that MAIL FROM address in `smtp_sender_acl`, the message is rejected.
+- **PostSRSd** rewrites envelope senders on forwarded mail. Without SRS, forwarded email fails SPF/DMARC checks at the destination and ends up in spam or gets rejected outright.
+- **MariaDB** stores alias mappings, domain registry, sender ACLs, SMTP credentials, API tokens, user accounts, and DNS verification state — 15 tables total. Postfix queries 4 of them directly; the rest are managed by the API.
+- **OpenDKIM** signs outbound messages via milter. Optional, but critical for deliverability.
 
-![alt text](image-2.png)
+### 2. API (Node.js + NestJS + Redis)
 
-### Features:
-- "Create alias request"
-- "Confirm alias creation/removal by token"
-- "Request alias deletion (unsubscribe)"
-- "Create API credentials request"
-- "Confirm API credentials and issue API token"
-- "Create alias (API key authenticated)"
-- "Delete alias (API key authenticated)"
-- "List aliases (API key authenticated)"
-- "Check DNS status for forwarding target"
-- "Submit DNS check request from UI"
-- "Submit DNS check request from email flow"
-- "List available domains"
-- "Rate limiting and abuse protection"
-- "Structured request/error logging"
+This is where the security lives. The API manages the lifecycle of aliases through a confirmation-based flow. Redis handles rate limiting state and session caching.
 
-## Context
+- **Confirmation tokens**: 6 digits via CSPRNG, stored as SHA-256 hashes (never plaintext), 10-minute TTL, 60-second cooldown between resends
+- **Anti-loop**: destination can't be an existing alias, can't use a managed domain, can't be itself
+- **RFC validation**: local-part against RFC 5322, domain against RFC 1035
+- **Rate limiting**: ~856 lines of middleware — hard limits plus cumulative slow-down (250ms escalating per request to tire out automated tools)
+- **Ban system**: multi-layer by IP (IPv4/IPv6 normalization), domain (recursive subdomain matching), email, and name
+- **Transparency**: the confirmation page shows the token, the alias, the destination, and the exact SQL mutation that will be applied — `INSERT` or `DELETE` — before you hit confirm
 
-@Lou-Cipher created a Perl API that allowed the creation of email aliases for The Hacker's Choice. This service was discontinued for a time after Lou-Cipher's departure.
+### 3. UI (Next.js + React + Tailwind CSS)
 
-We took it over to create a more robust infrastructure, with enhanced validation/hardening, a more modern API, and an intuitive visual interface. We didn't think about reinventing the wheel; we simply gathered what already worked, updated it for modern times, and created an API that allowed us to manage the base stack.
+A front door to the API. Domain selection with hacker-culture badges, `curl` command generation for every action, API key management. No account required for basic use.
 
-The goal is: <u>*Low cost*</u>, <u>*easy maintenance*</u>, **SECURE**, <u>*fast migration*</u>, and the ability to <u>*destroy the whole damn thing whenever we wanted with total guarantee that no data will survive*</u>.
+---
 
-Even with limited resources, we were able to create a very flexible solution by unifying the core setup with a modern stack.
+## Security
 
-## Description
+- **Admin auth**: Argon2id, 128 MB memory cost (anti-GPU/ASIC). No self-registration. Login rate-limited on failures only. Non-existent emails trigger a dummy hash to prevent timing-based enumeration
+- **JWT**: EdDSA (Ed25519) with key rotation via `kid`. Max 5 sessions per admin. Sign-out-all available. Every login and account change sends an email notification
+- **CSRF**: HMAC-SHA256 with `crypto.timingSafeEqual`
+- **Cookies**: `__Host-` prefix, `httpOnly`, `Secure` in production
+- **API keys**: 256-bit, stored as SHA-256 hashes, shown once
+- **HTTP hardening**: `no-store`, `no-referrer`, `X-Powered-By` disabled, Helmet, strict CORS whitelist, 32 KB body limit, `x-request-id` on every request, `whitelist: true` on ValidationPipe
+- **Logging**: 12 categories of sensitive fields redacted automatically
+- **Database**: atomic transactions with `SELECT ... FOR UPDATE`, IPs in `VARBINARY(16)`
 
-This system is a mail-forwarding management stack. It allows users to create and remove email aliases securely. The project is divided into these main layers:
+We didn't add this list to look impressive. We added it because if you're going to trust a service with your email routing, you should know exactly what's running. Read the code. It's all there.
 
-1. **mail-forwarding-core** (that is the unique that's really required for minimal deployments)
-2. **mail-forwarding-api**
-3. **mail-forwarding-ui**
-4. **mail-forwarding-dns-checker**
+---
 
-### mail-forwarding-core (Postfix, PostSRSd, MariaDB, OpenDKIM)
-> Source code: https://github.com/haltman-io/mail-forwarding-core
+## Limitations
 
-* **Postfix**: Receive emails at alias email addresses, query the owner, and forward the email to the owner's intended address.
-* **PostSRSd**: Receive email content from Postfix, apply SRS (Sender Rewriting Scheme), return the email to Postfix, required to circumvent SPF restrictions by replacing the envelope sender with a temporary email address from one of their own domains.
-* **MariaDB**: Database, stores the data for Postfix queries.
-* **OpenDKIM**: Manage DKIM key.
+- **No reply-from-alias.** You can receive through the alias, but if you hit "Reply," your real address is exposed. This is forwarding, not a bidirectional alias manager.
+- **No message storage.** There's no inbox. If your destination is offline, the mail bounces.
+- **No PGP.** We don't add encryption. What arrives is what was sent.
+- **No mobile app** (for the service itself — the custom .apk for the "burn everything" scenario is a different story).
+- **SRS isn't perfect.** Some strict DMARC `p=reject` policies from original senders can still cause issues. This is a fundamental email forwarding limitation, not ours.
+- **Shared domain reputation.** 50 domains, shared pool. If someone abuses a domain, it can affect deliverability for others. We actively ban abusers, but it's a real tradeoff.
+- **Beta.** It works. It's tested. There are integration tests for the critical flows. But it's a community project, not a service with SLAs.
 
-### mail-forwarding-api (Node.js)
-> Source code: https://github.com/haltman-io/mail-forwarding-api
+### How this compares to SimpleLogin and addy.io
 
-It allows users to create and remove email aliases with email-based confirmation, and provides secure API-key endpoints for programmatic alias management (create, delete, list, stats, and activity). It also includes a DNS validation relay to check forwarding domain readiness, with built-in input validation, rate limiting, and logging for security and reliability.
+It doesn't compete with them. Different layer.
 
-### mail-forwarding-ui
-> Source code: https://github.com/haltman-io/mail-forwarding-ui
+SimpleLogin (Proton) gives you reply-from-alias, PGP, mobile apps, browser extensions, and integration with the Proton ecosystem. addy.io does the same class of things. They're products. They're good products.
 
-The interface helps users utilize the mail-forwarding-api through a simple, step-by-step form.
+We're infrastructure. No account. No payment. No ecosystem. You get the full core stack, the API, anti-abuse controls, source transparency, and the Unlicense. If you need more than forwarding, use them. If you need a minimal, auditable, self-hostable forwarding layer with no limits and no vendor, use this.
 
-It collects data for alias creation, triggers verifications, and registers the alias in conjunction with the API.
+---
 
-It collects the necessary domain details, verifies DNS settings, and displays a final confirmation when everything is configured correctly.
+## Why we built this
 
-It's a real lifesaver. There's no UI prettier than this.
+![Haltman.io](haltman-flag.gif)
 
-*Only the V2 that we're already building is prettier, but that's a topic for another time :)*
+### We didn't want to reinvent the wheel
 
-### mail-forwarding-dns-checker
-> Source code: https://github.com/haltman-io/mail-forwarding-dns-checker
+We didn't create an email server. Postfix has been doing this job since before most "innovative email solutions" existed. We just use it. It reads alias-to-destination mappings from MariaDB and forwards mail. Dovecot handles SASL authentication. PostSRSd rewrites envelope senders. OpenDKIM signs outbound messages. The NestJS API doesn't touch a single email — it just manages the routing rules in the database.
 
-The interface validates DNS configuration for the mail-forwarding service through a streamlined API-based approach.
+No magic. No proprietary relay. No "nebulous SaaS" that processes your messages through seventeen microservices.
 
-It accepts domain submission requests for both UI (CNAME) and email forwarding (MX, SPF, DMARC) validation, initiates automatic DNS polling, and tracks verification status in real-time.
+### We didn't want "Ultra-Blaster Innovative Powered by AI" features
 
-It collects the target domain from user input, verifies DNS records against expected configurations, and continuously monitors until requirements are met or the request expires.
+We want to receive emails from different domains and forward them to our personal addresses. That's it.
 
-It provides a read-only polling endpoint that returns detailed diagnostic information about missing or incorrect DNS records, helping users understand exactly what needs to be configured.
+You pick a handle, a domain, a destination. You confirm via email. Postfix starts forwarding. You want to remove it? Same flow: request, confirm, gone.
 
-## Why the hell did we build this?
+### We wanted to escape the open-core trap
 
-![alt text](haltman-flag.gif)
+We want:
 
-### Our sincerely opinion
+- Unlimited forwarding rules
+- Unlimited users
+- Unlimited addresses
+- Unlimited domains
+- Unlimited emails
+- A picture of Ronaldinho Gaucho on the login menu if we feel like it
 
-We at Haltman.io still have only one question that has taken us some time to answer. Let's step outside the administrative frameworks of "technical documentation" and have a real conversation. 
+We don't want to stop our instance because it hit some "open-core" limit. We don't want to discover that the feature we need is behind a paywall after we've already deployed. The Unlicense means you take the code, you run it, you modify it, you sell it if you want. We don't care. It's yours.
 
-Data controls the world.   
+### We wanted real self-hosting
 
-It is the most valuable thing there is, and yet we hand it over on a silver platter to any foreign company that writes in its privacy-policy.html, "We don't sell your data to third parties. Trust us, we're cool, look at our super modern UI.".
+Run it on your own infrastructure. Under your own brand. On your own domains. Host the UI on Vercel, Cloudflare Pages, GitHub Pages, Ngrok, a temporary server on segfault.net, a hidden service on `.onion` — we've done all of these. We even set up Caddy with on-demand TLS because we couldn't stand asking our friends anymore to create DNS records for us. We kicked them out and hosted it ourselves.
 
-What we really wanted was:
+### We wanted to learn
 
-**REINVENTING THE WHEEL? not here, thank you**:    
-We didn't create an email server,  we just use one that's already robust and meets our needs.
+Every time we tried something different, we learned something new. We connected the API to Telegram bots and Discord bots. We built browser extensions for Firefox and Chrome. We call the API from the terminal because why not.
 
-**Avoiding "Ultra-Blaster Innovative Powered by AI" features**:       
-We want to receive emails from different domains and forward them to our personal email addresses, not a Swiss Army knife that forwards emails magically trough XYZ algorithm with ABC protocol by the power of grayskull and a ULTRA-AI-SYSTEM.
+This project allowed us to mature internally, meet people who knew things we didn't, and absorb knowledge we'll carry for life. The point is we built it with our own hands and we understand every line.
 
-**Escaping from these bull-shit of "open-core"**: 
+### We wanted the ability to burn everything
 
-We want:   
-* Unlimited forwarding rules. 
-* Unlimited users.
-* Unlimited addresses.
-* Unlimited domains.
-* Unlimited emails.
-* A picture of Ronaldinho Gaúcho on the login menu of our tool.
-* * Or a hot hentai picture, whatever, who cares?
+This is the part most people don't think about.
 
-We don't want to have to stop our instance after some time because it hit some "open-core" limit.
+We want to destroy everything whenever, wherever, and when we want. Through a Telegram bot that shuts down the server (LVM with LUKS). Through a custom mobile app. By voice command. By whatever trigger we decide is appropriate.
 
-**Self-hosting**: 
+We don't want to open a ticket on Zendesk. We don't want to send an email to `support@some-company.com` and wait 5 business days for someone to confirm that our data has been "scheduled for deletion." We want complete certainty that everything can be shut down, destroyed, and recreated elsewhere.
 
-We want to run it independently, on our own infrastructure, under our own brand, on our internet connections, on our domains and in whatever way we want. 
+Intellectual freedom to think, plan, and try. Without paying a subscription for the privilege.
 
-**TO LEARN, and acquire knowledge**:
+---
 
-We run the project's front-end in all sorts of places: Vercel, Cloudflare Pages, GitHub Pages, Ngrok, a temporary server on segfault.net, hidden service on .onion.
+## Backstory
 
-We also managed to connect this shit to external bots (dc gg, tg, others).
+[Lou-Cipher](https://github.com/lou-cipher), from The Hacker's Choice (THC), created a Perl API years ago that allowed alias creation for the THC community. It worked. Then Lou-Cipher went silent, the service went down, and THC put out a notice asking someone to take over.
 
-We built browser extensions (add-on) for g00gl3 and m0z1lla. _We will never forgive Google for rejecting our add-on the first upload._
+We're Haltman.io — a crew of Brazilian hackers. Not a company. Not a startup. Not a consultancy. Just friends who've been working together for years, bound by shared principles: freedom, transparency, free software, and the open sharing of knowledge.
 
-But I like to call the API directly into my terminal. Why? Idk, but why not?
+We took the concept that already worked, didn't try to reinvent anything, and rebuilt it from the ground up. The core mail stack — Postfix, Dovecot, PostSRSd, MariaDB, OpenDKIM — handles all mail transport, authentication, and signing. On top of that sits a NestJS API with Redis for rate limiting and session state, and a Next.js UI built with React and Tailwind CSS. We wrote proper anti-abuse controls, hardened the authentication, added authenticated SMTP submission with sender ACL enforcement, documented everything, and released it all under the Unlicense — public domain, no restrictions, no copyleft, no strings.
 
-The key is: **every time we tried something different, we end up learning something new.**
+The goal from day one: **low cost, easy maintenance, SECURE, fast migration, and the ability to destroy the whole damn thing whenever we wanted with total guarantee that no data will survive.**
 
-We even created a simple schema with Caddy using on-demand TLS because we couldn't stand having to ask our friends anymore, "yo b1tch, please create this TXT=v3rcel... entry on DNS before doing that thing", we kicked them out and hosted the damn thing ourselves. 
+---
 
-It allowed us to mature internally, meet new people who knew a lot about something we didn't know or knew very little about, absorb knowledge for life which we will replicate professionally, in open-source projects, to impress the g1rls on the bar or whatever else.
+## Self-hosting
 
-**BURN EVERYTHING WHEN NEEDED**:   
-We want to destroy everything whenever, wherever, and when we want. 
+You need a server with a clean IP (check blacklists first) and DNS control for each domain. The stack is modular — every component has its own repository.
 
-Whether it's through a Telegram/Discord bot that receives a message and shuts down the server (LVM with LUKS), or through a custom mobile app (our own .apk), or by voice command (Alexa and others) or even by cardiac arrest, fuck it, we want to have control over destroying our own data at any moment without MITM.
+### Core
 
-We don't want to open a ticket on zendesk or to send a mail to support@... of a company. We want to trust that we won't be compromised by a third party and that we are completely certain that everything can be shut down, destroyed, and recreated elsewhere. We want intellectual freedom to think, plan, and try. We do not want to pay a subscription for this, we want to build this by our own hands.
+| Component | Purpose | Repository |
+|---|---|---|
+| Postfix, Dovecot, PostSRSd, MariaDB, OpenDKIM | MTA, SASL auth, SRS, database, DKIM signing | [mail-forwarding-core](https://github.com/haltman-io/mail-forwarding-core) |
 
-## ABUSE
+Reference configs for all core components, per-component READMEs, and the full 15-table database schema.
 
-The only thing I ask is that you do not abuse our services. Despite the ironic tone, we take abuse seriously.
+### API
 
-```
-We do not tolarate abuse of our tools or services. Please contact us if you have any concern about abuse.
+| Component | Purpose | Repository |
+|---|---|---|
+| NestJS API | Alias lifecycle, auth, rate limiting, bans | [mail-forwarding-api](https://github.com/haltman-io/mail-forwarding-api) |
 
-The tools we develop and services we provide are for research and eduational purposes only. They are meant to be used for good purposes.
+### UI
 
-THC and Haltman.IO is no place for mining-imbeciles, ransomware-idiots, DDoS-kiddos, revenge-hacking, greed, hate or criminal activites. We have no patience for this.
-```
+| Component | Purpose | Repository |
+|---|---|---|
+| Next.js UI | Web interface, domain selection, API key management | [mail-forwarding-ui](https://github.com/haltman-io/mail-forwarding-ui) |
 
-Any abuse, please contact us via root@haltman.io OR members@proton.thc.org. We will stop the abuse.
+### Supporting services
 
-## The license is: The Unlicense &lt;unlicense.org&gt;
+| Component | Purpose | Repository |
+|---|---|---|
+| DNS checker | Domain DNS verification daemon | [mail-forwarding-dns-checker](https://github.com/haltman-io/mail-forwarding-dns-checker) |
+| DKIM sync | Keeps OpenDKIM KeyTable/SigningTable aligned with MariaDB `domain` table | [mail-forwarding-dkim-sync](https://github.com/haltman-io/mail-forwarding-dkim-sync) |
+| UI SaaS layer | Caddy + ASK endpoint for on-demand TLS multi-tenant hosting | [mail-forwarding-ui-saas](https://github.com/haltman-io/mail-forwarding-ui-saas) |
 
-This is **licensed** under the **unlicense** **license**. Use it as you wish.
+### Browser extension
+
+| Platform | Link |
+|---|---|
+| Firefox (AMO) | [Email Alias Manager](https://addons.mozilla.org/en-US/firefox/addon/email-alias-manager/) |
+| Source code | [mail-forwarding-addon-mozilla-firefox](https://github.com/haltman-io/mail-forwarding-addon-mozilla-firefox) |
+
+The DKIM sync tool exists because manually updating KeyTable and SigningTable for 50 domains is the kind of thing you do once before deciding to automate it forever.
+
+---
+
+## About us
+
+**Haltman.io** is an independent collective of Brazilian hackers. Not a company. Not funded. Not a consultancy. We came together through years of friendship and shared technical work. Our members have been part of other groups before, but we chose to move forward independently when those spaces stopped reflecting the values we care about: freedom, transparency, free software, and knowledge sharing.
+
+**The Hacker's Choice** is an international hacker collective founded in 1995. They've released Hydra, AFLplusplus, Segfault.net, and decades of security research. They're not for hire. Everything they do is public. Three members have been arrested (zero convicted), one got raided, two received visits from Germany's federal agencies, and one was blackmailed by GCHQ. The same agencies use their tools.
+
+This project lives under both flags.
+
+---
+
+## Abuse
+
+Despite the tone, we take this seriously.
+
+We do not tolerate abuse of our tools or services. This is no place for ransomware, botnets, DDoS, fraud, revenge-hacking, or criminal activity. We have no patience for this.
+
+The service is for research, education, and legitimate privacy use. If you see abuse, contact us: [root@haltman.io](mailto:root@haltman.io) or [members@proton.thc.org](mailto:members@proton.thc.org). We will stop it.
+
+Report abuse: [mail.thc.org/abuse](https://mail.thc.org/abuse)
+
+---
+
+## Links
+
+- **Live service**: [mail.thc.org](https://mail.thc.org) / [forward.haltman.io](https://forward.haltman.io)
+- **API**: [github.com/haltman-io/mail-forwarding-api](https://github.com/haltman-io/mail-forwarding-api)
+- **Core stack**: [github.com/haltman-io/mail-forwarding-core](https://github.com/haltman-io/mail-forwarding-core)
+- **UI**: [github.com/haltman-io/mail-forwarding-ui](https://github.com/haltman-io/mail-forwarding-ui)
+- **UI SaaS**: [github.com/haltman-io/mail-forwarding-ui-saas](https://github.com/haltman-io/mail-forwarding-ui-saas)
+- **DNS checker**: [github.com/haltman-io/mail-forwarding-dns-checker](https://github.com/haltman-io/mail-forwarding-dns-checker)
+- **DKIM sync**: [github.com/haltman-io/mail-forwarding-dkim-sync](https://github.com/haltman-io/mail-forwarding-dkim-sync)
+- **Firefox add-on**: [addons.mozilla.org](https://addons.mozilla.org/en-US/firefox/addon/email-alias-manager/) / [source](https://github.com/haltman-io/mail-forwarding-addon-mozilla-firefox)
+- **Haltman.io**: [haltman.io](https://haltman.io)
+- **The Hacker's Choice**: [thc.org](https://www.thc.org)
+- **Security / VDP**: [mail.thc.org/security](https://mail.thc.org/security)
+- **Abuse**: [mail.thc.org/abuse](https://mail.thc.org/abuse)
+
+---
+
+## License
+
+Licensed under [The Unlicense](https://unlicense.org/) — public domain, no restrictions, no copyleft, no strings. You take the code, you run it, you modify it, you sell it if you want. We don't care. It's yours.
 
 ```
 This is free and unencumbered software released into the public domain.
@@ -227,3 +333,16 @@ OTHER DEALINGS IN THE SOFTWARE.
 For more information, please refer to <https://unlicense.org/>
 ```
 
+---
+
+## Read the code. Use it or don't. Fork it if you want.
+
+We're not here to sell you anything. There's no pitch, no upsell, no "premium tier coming soon." The code is public. The license is Unlicense. You can run your own instance tomorrow and never talk to us again.
+
+If you find a bug, open an issue. If you find a vulnerability, report it — there's a [VDP and a Hall of Fame](https://mail.thc.org/security). If you have a cool domain you want to add to the pool, reach out. If you just want a disposable alias without creating an account anywhere, go to [mail.thc.org](https://mail.thc.org) and get one in 30 seconds.
+
+We built this because we needed it. We released it because someone else might need it too.
+
+No corporate bullshit. No VC money. No data harvesting. Just aliases.
+
+*Made in Brazil.*
